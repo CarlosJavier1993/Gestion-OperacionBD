@@ -1,13 +1,16 @@
 import pandas as pd
 from sqlalchemy import create_engine
+import tkinter as tk
+from tkinter import messagebox
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # Configuración de la conexión a la base de datos MySQL
-# Reemplaza credenciales y detalles de la base de datos
-usuario = "root"  # Usuario de MySQL
-contraseña = ""  # Contraseña de MySQL
-host = "localhost"  # Host de la base de datos
-puerto = "3306"  # Puerto de MySQL 
-nombre_base_de_datos = "sakila"  # Nombre de la base de datos
+usuario = "root"
+contraseña = ""
+host = "localhost"
+puerto = "3306"
+nombre_base_de_datos = "sakila"
 
 # Crear la cadena de conexión para MySQL
 cadena_conexion = f"mysql+pymysql://{usuario}:{contraseña}@{host}:{puerto}/{nombre_base_de_datos}"
@@ -15,7 +18,8 @@ cadena_conexion = f"mysql+pymysql://{usuario}:{contraseña}@{host}:{puerto}/{nom
 # Crear el motor de SQLAlchemy
 engine = create_engine(cadena_conexion)
 
-# 1. INNER JOIN - Alquileres entre junio y julio de 2005
+# Consultas SQL
+
 query_inner_join = """
 SELECT 
     c.customer_id, 
@@ -34,12 +38,6 @@ INNER JOIN film_category fc ON f.film_id = fc.film_id
 WHERE r.rental_date BETWEEN '2005-06-01' AND '2005-07-01';
 """
 
-# Ejecutar la consulta y cargar los resultados en un DataFrame
-df_inner_join = pd.read_sql(query_inner_join, engine)
-print("Resultados del INNER JOIN:")
-print(df_inner_join)
-
-# 2. LEFT JOIN - Clientes activos, incluso si no han alquilado películas
 query_left_join = """
 SELECT 
     c.customer_id, 
@@ -53,12 +51,6 @@ LEFT JOIN inventory i ON r.inventory_id = i.inventory_id
 WHERE c.active = 1;
 """
 
-# Ejecutar la consulta y cargar los resultados en un DataFrame
-df_left_join = pd.read_sql(query_left_join, engine)
-print("\nResultados del LEFT JOIN:")
-print(df_left_join)
-
-# 3. RIGHT JOIN - Películas con tarifa de alquiler mayor a 2.99
 query_right_join = """
 SELECT 
     s.staff_id, 
@@ -72,13 +64,6 @@ RIGHT JOIN film f ON i.film_id = f.film_id
 WHERE f.rental_rate > 2.99;
 """
 
-# Ejecutar la consulta y cargar los resultados en un DataFrame
-df_right_join = pd.read_sql(query_right_join, engine)
-print("\nResultados del RIGHT JOIN:")
-print(df_right_join)
-
-# 4. FULL OUTER JOIN - Clientes sin alquileres, registros sin asignación de empleado o inventarios sin relación
-# MySQL no soporta FULL OUTER JOIN directamente, por lo que se simula con UNION de LEFT y RIGHT JOIN
 query_full_outer_join = """
 SELECT 
     c.customer_id, 
@@ -109,12 +94,6 @@ RIGHT JOIN staff s ON r.staff_id = s.staff_id
 WHERE r.rental_date IS NULL OR s.staff_id IS NULL OR i.inventory_id IS NULL;
 """
 
-# Ejecutar la consulta y cargar los resultados en un DataFrame
-df_full_outer_join = pd.read_sql(query_full_outer_join, engine)
-print("\nResultados del FULL OUTER JOIN:")
-print(df_full_outer_join)
-
-# 5. CROSS JOIN - Combinaciones con los primeros 10 clientes
 query_cross_join = """
 SELECT 
     c.customer_id, 
@@ -126,7 +105,113 @@ CROSS JOIN film f
 WHERE c.customer_id < 10;
 """
 
-# Ejecutar la consulta y cargar los resultados en un DataFrame
-df_cross_join = pd.read_sql(query_cross_join, engine)
-print("\nResultados del CROSS JOIN:")
-print(df_cross_join)
+# Función para ejecutar las consultas SQL
+def ejecutar_consulta(query):
+    df = pd.read_sql(query, engine)
+    return df
+
+# Función para guardar los resultados en PDF
+def guardar_pdf(df, nombre_pdf):
+    c = canvas.Canvas(nombre_pdf, pagesize=letter)
+    c.setFont("Helvetica", 10)
+    
+    x_start = 30
+    column_width = 130
+    
+    # Títulos de las columnas
+    for i, column in enumerate(df.columns):
+        c.drawString(x_start + (i * column_width), 750, column)
+    
+    # Filas de datos
+    for row_index, row in df.iterrows():
+        for col_index, value in enumerate(row):
+            c.drawString(x_start + (col_index * column_width), 730 - (row_index * 20), str(value))
+    
+    c.save()
+
+
+# Funciones para ejecutar cada consulta y mostrar resultados
+def mostrar_inner_join():
+    df = ejecutar_consulta(query_inner_join)
+    print(df)
+    guardar_pdf(df, "inner_join_result.pdf")
+    messagebox.showinfo("Éxito", "PDF generado con éxito!")
+
+def mostrar_left_join():
+    df = ejecutar_consulta(query_left_join)
+    print(df)
+    guardar_pdf(df, "left_join_result.pdf")
+    messagebox.showinfo("Éxito", "PDF generado con éxito!")
+
+def mostrar_right_join():
+    df = ejecutar_consulta(query_right_join)
+    print(df)
+    guardar_pdf(df, "right_join_result.pdf")
+    messagebox.showinfo("Éxito", "PDF generado con éxito!")
+
+def mostrar_full_outer_join():
+    df = ejecutar_consulta(query_full_outer_join)
+    print(df)
+    guardar_pdf(df, "full_outer_join_result.pdf")
+    messagebox.showinfo("Éxito", "PDF generado con éxito!")
+
+def mostrar_cross_join():
+    df = ejecutar_consulta(query_cross_join)
+    print(df)
+    guardar_pdf(df, "cross_join_result.pdf")
+    messagebox.showinfo("Éxito", "PDF generado con éxito!")
+
+# Crear la interfaz gráfica con Tkinter
+root = tk.Tk()
+root.title("Consultas SQL y Generación de PDF")
+
+# Cambiar color de fondo de la ventana
+root.configure(bg="#f0f8ff")  # Color de fondo suave (aliceblue)
+
+# Establecer el tamaño de la ventana
+root.geometry("400x450")
+
+# Título con fuente personalizada
+title_label = tk.Label(root, text="Consultas SQL", font=("Arial", 16, "bold"), fg="#4b0082", bg="#f0f8ff")
+title_label.pack(pady=20)
+
+# Función para mejorar los botones (agregar color, efectos hover)
+def button_hover(event):
+    event.widget.config(bg="#8a2be2")
+
+def button_leave(event):
+    event.widget.config(bg="#4b0082")
+
+# Crear botones para cada consulta
+button_inner_join = tk.Button(root, text="Mostrar INNER JOIN", font=("Arial", 12), bg="#4b0082", fg="white", width=20, height=2)
+button_inner_join.pack(pady=10)
+button_inner_join.bind("<Enter>", button_hover)
+button_inner_join.bind("<Leave>", button_leave)
+button_inner_join.config(command=mostrar_inner_join)
+
+button_left_join = tk.Button(root, text="Mostrar LEFT JOIN", font=("Arial", 12), bg="#4b0082", fg="white", width=20, height=2)
+button_left_join.pack(pady=10)
+button_left_join.bind("<Enter>", button_hover)
+button_left_join.bind("<Leave>", button_leave)
+button_left_join.config(command=mostrar_left_join)
+
+button_right_join = tk.Button(root, text="Mostrar RIGHT JOIN", font=("Arial", 12), bg="#4b0082", fg="white", width=20, height=2)
+button_right_join.pack(pady=10)
+button_right_join.bind("<Enter>", button_hover)
+button_right_join.bind("<Leave>", button_leave)
+button_right_join.config(command=mostrar_right_join)
+
+button_full_outer_join = tk.Button(root, text="Mostrar FULL OUTER JOIN", font=("Arial", 12), bg="#4b0082", fg="white", width=20, height=2)
+button_full_outer_join.pack(pady=10)
+button_full_outer_join.bind("<Enter>", button_hover)
+button_full_outer_join.bind("<Leave>", button_leave)
+button_full_outer_join.config(command=mostrar_full_outer_join)
+
+button_cross_join = tk.Button(root, text="Mostrar CROSS JOIN", font=("Arial", 12), bg="#4b0082", fg="white", width=20, height=2)
+button_cross_join.pack(pady=10)
+button_cross_join.bind("<Enter>", button_hover)
+button_cross_join.bind("<Leave>", button_leave)
+button_cross_join.config(command=mostrar_cross_join)
+
+# Ejecutar la interfaz gráfica
+root.mainloop()
